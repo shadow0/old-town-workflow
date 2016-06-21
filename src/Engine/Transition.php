@@ -10,6 +10,7 @@ use OldTown\Workflow\Exception\InternalWorkflowException;
 use OldTown\Workflow\Exception\InvalidInputException;
 use OldTown\Workflow\Exception\StoreException;
 use OldTown\Workflow\Exception\WorkflowException;
+use OldTown\Workflow\Exception as WFExceptionNS;
 use OldTown\Workflow\JoinNodes;
 use OldTown\Workflow\Loader\ActionDescriptor;
 use OldTown\Workflow\Loader\ResultDescriptor;
@@ -31,6 +32,9 @@ use OldTown\Workflow\Exception\InvalidArgumentException;
  */
 class Transition extends AbstractEngine implements TransitionInterface
 {
+    /** @var array */
+    static private $entryStack = [];
+
     /**
      *
      * @var array
@@ -55,6 +59,8 @@ class Transition extends AbstractEngine implements TransitionInterface
      */
     public function transitionWorkflow(WorkflowEntryInterface $entry, SplObjectStorage $currentSteps, WorkflowStoreInterface $store, WorkflowDescriptor $wf, ActionDescriptor $action, TransientVarsInterface $transientVars, TransientVarsInterface $inputs, PropertySetInterface $ps)
     {
+        //NB kota@ регистратор с автоматическим удалением.
+        $registerAffectedEntry = new RegisterAffectedWrapper($this, $entry->getId(), $action->getName());
         try {
             $step = $this->getCurrentStep($wf, $action->getId(), $currentSteps, $transientVars, $ps);
 
@@ -744,5 +750,39 @@ class Transition extends AbstractEngine implements TransitionInterface
         }
 
         return $objWfd;
+    }
+
+    /**
+     * @param integer $id
+     * @param string $action
+     */
+    public function registerAffectedEntity($id, $action)
+    {
+        $strId = $this->getStringId($id);
+        if (array_key_exists($strId, self::$entryStack)) {
+            throw new WFExceptionNS\CycleOperationException("Циклический вызов в стейтмашине для id="
+                .$id.' action='.$action);
+        }
+        self::$entryStack[$strId] = $action;
+    }
+
+    public function unregisterAffectedEntity($id)
+    {
+        $val = end(self::$entryStack);
+        if ($val === false) {
+            throw new WFExceptionNS\UnregisteredStackException("нет зарегистрированных вызовов в стейтмашине для id="
+                .$id, self::$entryStack);
+        }
+        $strId = $this->getStringId($id);
+        $key = key(self::$entryStack);
+        if ($key != $strId) {
+            throw new WFExceptionNS\InternalWorkflowException("попытка очистить непоследний вызов в стеке id=" .$id);
+        }
+        unset(self::$entryStack[$key]);
+    }
+
+    protected function getStringId($id)
+    {
+        return 'i'.$id;
     }
 }
