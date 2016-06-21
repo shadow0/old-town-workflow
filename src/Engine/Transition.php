@@ -784,5 +784,6 @@ class Transition extends AbstractEngine implements TransitionInterface
     protected function getStringId($id)
     {
         return 'i'.$id;
+
     }
 }
