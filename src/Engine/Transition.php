@@ -760,6 +760,16 @@ class Transition extends AbstractEngine implements TransitionInterface
     }
 
     /**
+     * сбрасывает стык обработки entry
+     * NB!!! Это нужно только для тестов! В обычном режиме сбрасывать стек нельзя,
+     * он предназначен для защиты от зацикливания
+     */
+    public function clearEntryStack()
+    {
+        self::$entryStack = [];
+    }
+
+    /**
      * @param integer $id
      * @param string $action
      */
