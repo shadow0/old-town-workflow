@@ -259,6 +259,13 @@ class Transition extends AbstractEngine implements TransitionInterface
                 }
             }
 
+            /**
+             * NB!!! clear current entry from stack before $extraPostFunctions calls, because step has already changed.
+             * Now we can call $extraPostFunctions which can execute the state machine for
+             * this entry again (cascading style)
+             */
+            unset($registerAffectedEntry);
+
             if ($extraPostFunctions && $extraPostFunctions->count() > 0) {
                 foreach ($extraPostFunctions as $function) {
                     $functionsEngine->executeFunction($function, $transientVars, $ps);
